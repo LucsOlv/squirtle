@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks On Demand</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body class="p-8">
+    <div class="mx-auto max-w-7xl">
+        <!-- Filters -->
+
+        <!-- Header with Add Button -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Tasks</h1>
+            <button onclick="window.add_task_modal.showModal()" class="btn btn-primary">+ Add Task</button>
+        </div>
+        <div class="bg-base-200 p-4 rounded-lg mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Number</span>
+                    </label>
+                    <input type="text" id="filterNumber" onkeyup="applyFilters()" 
+                           class="input input-bordered" placeholder="Filter by number">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Title</span>
+                    </label>
+                    <input type="text" id="filterTitle" onkeyup="applyFilters()" 
+                           class="input input-bordered" placeholder="Filter by title">
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Status</span>
+                    </label>
+                    <select id="filterStatus" onchange="applyFilters()" class="select select-bordered">
+                        <option value="">All Statuses</option>
+                        <option value="1">To Do</option>
+                        <option value="2">In Progress</option>
+                        <option value="3">Done</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Time Range</span>
+                    </label>
+                    <div class="join">
+                        <input type="number" id="filterTimeMin" onchange="applyFilters()" min="0"
+                               class="join-item input input-bordered w-24" placeholder="Min">
+                        <input type="number" id="filterTimeMax" onchange="applyFilters()" min="0"
+                               class="join-item input input-bordered w-24" placeholder="Max">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button onclick="clearFilters()" class="btn btn-ghost btn-sm">Clear Filters</button>
+            </div>
+        </div>
+
+        <!-- Add Task Modal -->
+        <dialog id="add_task_modal" class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-xl mb-6">New Task</h3>
+                <form action="/add" method="post" class="space-y-4">
+                    <div class="grid gap-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Number</span></label>
+                            <input type="text" name="Number" class="input input-bordered" required />
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Title</span></label>
+                            <input type="text" name="Title" class="input input-bordered" required />
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Description</span></label>
+                            <textarea name="Description" class="textarea textarea-bordered h-24" required></textarea>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text">Estimated Time (minutes)</span>
+                            </label>
+                            <input type="number" name="estimatedTime" class="input input-bordered" 
+                                min="0" step="15" value="0" />
+                        </div>
+                    </div>
+                    <div class="modal-action">
+                        <button type="submit" class="btn btn-primary">Create Task</button>
+                        <button type="button" class="btn" onclick="window.add_task_modal.close()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
+
+        <!-- Task Table -->
+        <div class="overflow-x-auto bg-base-200 rounded-lg">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="w-24">Number</th>
+                        <th>Title</th>
+                        <th class="w-48">Status</th>
+                        <th class="w-32">Time</th>
+                        <th class="w-20"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                        <tr class="hover:bg-base-300" data-task-row data-task-id="{{task.Id}}" 
+                            data-task-status="{{task.StatusId}}" data-task-title="{{task.Title}}" 
+                            data-task-number="{{task.Number}}" data-task-estimated-time="{{task.estimatedTime}}">
+                            <td data-task-number>{{ task.Number }}</td>
+                            <td data-task-title>{{ task.Title }}</td>
+                            <td>
+                                <select class="select select-bordered w-full" data-task-status
+                                    onchange="updateTaskStatus({{task.Id}}, 'StatusId', parseInt(this.value))">
+                                    <option value="1" {% if task.StatusId == 1 %}selected{% endif %}>To Do</option>
+                                    <option value="2" {% if task.StatusId == 2 %}selected{% endif %}>In Progress</option>
+                                    <option value="3" {% if task.StatusId == 3 %}selected{% endif %}>Done</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="text-sm">
+                                    {% assign totalTime = 0 %}
+                                    {% if task.TempoLancado %}
+                                        {% for entry in task.TempoLancado %}
+                                            {% assign minutes = entry | split: 'min' | first | plus: 0 %}
+                                            {% assign totalTime = totalTime | plus: minutes %}
+                                        {% endfor %}
+                                    {% endif %}
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="opacity-70">Est:</span>
+                                            <span class="font-medium">{{ task.estimatedTime }}m</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="opacity-70">Total:</span>
+                                            <span class="font-medium {% if totalTime > task.estimatedTime %}text-error{% else %}text-success{% endif %}"
+                                                data-task-total-time>
+                                                {{ totalTime }}m
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <button onclick="toggleDetails({{task.Id}})" class="btn btn-ghost btn-sm">
+                                    <svg id="arrow_{{task.Id}}" class="w-4 h-4 transition-transform" 
+                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="details_{{task.Id}}" class="hidden bg-base-300">
+                            <td colspan="5">
+                                <div class="p-4 grid grid-cols-2 gap-6">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <h3 class="font-semibold mb-2">Description</h3>
+                                            <p class="text-sm">{{ task.Description }}</p>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold mb-2">Created At</h3>
+                                            <p class="text-sm">{{ task.CreatedAt | date: '%Y-%m-%d %H:%M:%S' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <h3 class="font-semibold mb-2">Status Flags</h3>
+                                            <div class="flex gap-4">
+                                                <label class="label cursor-pointer gap-2">
+                                                    <span class="label-text">Complete</span>
+                                                    <input type="checkbox" class="checkbox" 
+                                                        {% if task.isComplete %}checked{% endif %}
+                                                        onchange="updateTaskStatus({{task.Id}}, 'isComplete', this.checked)" />
+                                                </label>
+                                                <label class="label cursor-pointer gap-2">
+                                                    <span class="label-text">Released</span>
+                                                    <input type="checkbox" class="checkbox" 
+                                                        {% if task.wasRelease %}checked{% endif %}
+                                                        onchange="updateTaskStatus({{task.Id}}, 'wasRelease', this.checked)" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h3 class="font-semibold">Time Tracking</h3>
+                                                <div class="flex items-center gap-2">
+                                                    <button onclick="updateEstimatedTime({{task.Id}})" 
+                                                        class="btn btn-ghost btn-sm">
+                                                        Update Estimate
+                                                    </button>
+                                                    <button onclick="launchTime({{task.Id}})" 
+                                                        class="btn btn-primary btn-sm">
+                                                        Launch Time
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="text-sm space-y-1">
+                                                {% if task.TempoLancado.size > 0 %}
+                                                    {% for entry in task.TempoLancado %}
+                                                        <div class="bg-base-200 p-2 rounded">{{ entry }}</div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <p class="text-base-content/60">No time entries</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 border-t pt-4">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <h3 class="font-semibold">Comments</h3>
+                                                <button onclick="addComment({{task.Id}})" class="btn btn-ghost btn-sm">
+                                                    + Add Comment
+                                                </button>
+                                            </div>
+                                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                                                {% if task.comments.size > 0 %}
+                                                    {% for comment in task.comments %}
+                                                        <div class="bg-base-200 p-3 rounded">
+                                                            <div class="flex justify-between items-start gap-4">
+                                                                <p class="whitespace-pre-wrap flex-1">{{ comment.text }}</p>
+                                                                <span class="text-xs opacity-70 whitespace-nowrap">
+                                                                    {{ comment.date | date: '%Y-%m-%d %H:%M:%S' }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <p class="text-base-content/60">No comments yet</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function toggleDetails(taskId) {
+            const taskRow = document.querySelector(`tr[data-task-id="${taskId}"]`);
+            const detailsRow = document.getElementById(`details_${taskId}`);
+            const arrow = document.getElementById(`arrow_${taskId}`);
+            
+            if (!detailsRow || taskRow.style.display === 'none') return;
+            
+            detailsRow.classList.toggle('hidden');
+            arrow.style.transform = detailsRow.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        }
+
+        async function updateTaskStatus(taskId, field, value) {
+            try {
+                const response = await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [field]: value })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update task');
+                location.reload();
+            } catch (error) {
+                console.error('Error updating task:', error);
+                alert('Failed to update task. Please try again.');
+            }
+        }
+
+        async function updateEstimatedTime(taskId) {
+            try {
+                const time = prompt('Enter estimated time in minutes:');
+                if (!time) return;
+
+                const response = await fetch(`/api/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estimatedTime: parseInt(time) })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update estimated time');
+                location.reload();
+            } catch (error) {
+                console.error('Error updating estimated time:', error);
+                alert('Failed to update estimated time. Please try again.');
+            }
+        }
+
+        async function launchTime(taskId) {
+            try {
+                const time = prompt('Enter time in minutes:');
+                if (!time) return;
+
+                const response = await fetch(`/api/tasks/${taskId}/time`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time: parseInt(time) })
+                });
+                
+                if (!response.ok) throw new Error('Failed to launch time');
+                location.reload();
+            } catch (error) {
+                console.error('Error launching time:', error);
+                alert('Failed to launch time. Please try again.');
+            }
+        }
+
+        async function addComment(taskId) {
+            try {
+                const text = prompt('Add your comment:');
+                if (!text?.trim()) return;
+
+                const response = await fetch(`/api/tasks/${taskId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        text,
+                        date: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to add comment');
+                location.reload();
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                alert('Failed to add comment. Please try again.');
+            }
+        }
+
+        // Filter functions
+        function applyFilters() {
+            const number = document.getElementById('filterNumber')?.value.toLowerCase() || '';
+            const title = document.getElementById('filterTitle')?.value.toLowerCase() || '';
+            const status = document.getElementById('filterStatus')?.value || '';
+            const timeMin = parseInt(document.getElementById('filterTimeMin')?.value || '0');
+            const timeMax = parseInt(document.getElementById('filterTimeMax')?.value || '999999');
+
+            document.querySelectorAll('tr[data-task-row]').forEach(row => {
+                const taskId = row.getAttribute('data-task-id');
+                const matches = (
+                    (!number || row.getAttribute('data-task-number').toLowerCase().includes(number)) &&
+                    (!title || row.getAttribute('data-task-title').toLowerCase().includes(title)) &&
+                    (!status || row.getAttribute('data-task-status') === status) &&
+                    (isNaN(timeMin) || parseInt(row.getAttribute('data-task-estimated-time')) >= timeMin) &&
+                    (isNaN(timeMax) || parseInt(row.getAttribute('data-task-estimated-time')) <= timeMax)
+                );
+
+                // Show/hide the main row
+                row.classList.toggle('hidden', !matches);
+                
+                // Handle details row
+                const detailsRow = document.getElementById(`details_${taskId}`);
+                if (detailsRow) {
+                    if (!matches) {
+                        detailsRow.classList.add('hidden');
+                        const arrow = document.getElementById(`arrow_${taskId}`);
+                        if (arrow) arrow.style.transform = '';
+                    }
+                }
+            });
+        }
+
+        function clearFilters() {
+            ['filterNumber', 'filterTitle', 'filterStatus', 'filterTimeMin', 'filterTimeMax'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            applyFilters();
+        }
+    </script>
+</body>
+</html>
