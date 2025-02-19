@@ -1,17 +1,10 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+{% layout 'layout/base.liquid' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tasks On Demand</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
-</head>
-
+{% block content %}
 <body class="p-8">
     <div class="mx-auto max-w-7xl">
         <!-- Filters -->
+        <button x-data @click="$store.teste.toggle()">Toggle Dark Mode</button>
 
         <!-- Header with Add Button -->
         <div class="flex justify-between items-center mb-6">
@@ -223,7 +216,7 @@
                                                     + Add Comment
                                                 </button>
                                             </div>
-                                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                                            <div x-data="" class="space-y-2 max-h-48 overflow-y-auto">
                                                 {% if task.comments.size > 0 %}
                                                     {% for comment in task.comments %}
                                                         <div class="bg-base-200 p-3 rounded">
@@ -249,6 +242,7 @@
             </table>
         </div>
     </div>
+{% endblock %}
 
     <script>
         function toggleDetails(taskId) {

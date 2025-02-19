@@ -13,7 +13,7 @@ export const taskRoutes = new Elysia()
     .use(html())
     .get('/', async () => {
         const tasks = await ListTasksUseCase();
-        return await engine.renderFile("index", { tasks });;
+        return await engine.renderFile("pages/task/index", { tasks });;
     })
     .post('/add', async ({ body }) => {
         return await CreateTaskUseCase(body);
